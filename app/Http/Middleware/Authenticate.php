@@ -14,6 +14,7 @@ class Authenticate extends BaseMiddleware
     {
         try {
             $user = JWTAuth::parseToken()->authenticate();
+            $request->attributes->add(['user' => $user]);
         } catch (Exception $e) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
