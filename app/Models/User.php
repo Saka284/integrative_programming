@@ -14,7 +14,7 @@ class User extends Model implements JWTSubject,AuthenticatableContract, Authoriz
 {
     use Authenticatable, Authorizable, HasFactory;
 
-    /**
+    /** 
      * The attributes that are mass assignable.
      *
      * @var array

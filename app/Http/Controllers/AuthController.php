@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
+
 class AuthController extends Controller
 {
     public function login(Request $request)
@@ -28,4 +29,15 @@ class AuthController extends Controller
     {
         return response()->json(auth()->user());
     }
+
+    public function logout(Request $request)
+{
+    try {
+        $token = JWTAuth::getToken(); // ambil token dari header Authorization
+        JWTAuth::invalidate($token);  // blacklist token
+        return response()->json(['message' => 'Successfully logged out']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to logout, please try again'], 500);
+    }
+}
 }
