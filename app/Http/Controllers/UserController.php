@@ -21,13 +21,15 @@ class UserController extends Controller
             $this->validate($request, [
                 'name' => 'required|string|max:100',
                 'email' => 'required|email|unique:users,email',
-                'password' => 'required|string|min:6'
+                'password' => 'required|string|min:6',
+                'role' => 'required|in:admin,penulis,pembaca'
             ]);
 
             $user = new User();
             $user->name = $request->name;
             $user->email = $request->email;
             $user->password = Hash::make($request->password); // ⬅️ Password di-hash
+            $user->role = $request->role;
             $user->save();
 
             return response()->json([

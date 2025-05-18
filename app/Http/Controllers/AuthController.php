@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Auth;
 
 
 class AuthController extends Controller
@@ -17,6 +18,8 @@ class AuthController extends Controller
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json(['message' => 'Email atau password salah'], 401);
         }
+
+        $user = Auth::user();
 
         return response()->json([
             'token' => $token,
@@ -31,13 +34,13 @@ class AuthController extends Controller
     }
 
     public function logout(Request $request)
-{
-    try {
-        $token = JWTAuth::getToken(); // ambil token dari header Authorization
-        JWTAuth::invalidate($token);  // blacklist token
-        return response()->json(['message' => 'Successfully logged out']);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Failed to logout, please try again'], 500);
+    {
+        try {
+            $token = JWTAuth::getToken(); // ambil token dari header Authorization
+            JWTAuth::invalidate($token);  // blacklist token
+            return response()->json(['message' => 'Successfully logged out']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to logout, please try again'], 500);
+        }
     }
-}
 }

@@ -19,29 +19,43 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
-$router->post('api/login', 'AuthController@login');    
+$router->post('api/login', 'AuthController@login');   
 
-$router->group(['prefix' => 'api' , 'middleware' => 'auth'], function () use ($router) {
+$router->group(['prefix' => 'api', 'middleware' => 'auth'], function () use ($router) {
+
+    //Semua user login
     $router->get('me', 'AuthController@me');
     $router->post('logout', 'AuthController@logout');
 
-    $router->get('users', 'UserController@index');
-    $router->post('users', 'UserController@store'); 
-    $router->get('users/{id}', 'UserController@show'); 
-    $router->put('users/{id}', 'UserController@update'); 
-    $router->delete('users/{id}', 'UserController@destroy'); 
+    //Admin saja (manajemen user)
+    $router->group(['middleware' => 'role:admin'], function () use ($router) {
+        $router->get('users', 'UserController@index');
+        $router->post('users', 'UserController@store');
+        $router->get('users/{id}', 'UserController@show');
+        $router->put('users/{id}', 'UserController@update');
+        $router->delete('users/{id}', 'UserController@destroy');
+    });
 
+    //Semua user login bisa lihat post/komentar
     $router->get('posts', 'PostController@index');
-    $router->post('posts', 'PostController@store');
     $router->get('posts/{id}', 'PostController@show');
-    $router->put('posts/{id}', 'PostController@update');
-    $router->patch('posts/{id}', 'PostController@updatePartial');
-    $router->delete('posts/{id}', 'PostController@destroy');
-
     $router->get('comments', 'CommentController@index');
-    $router->post('comments', 'CommentController@store');
     $router->get('comments/{id}', 'CommentController@show');
-    $router->put('comments/{id}', 'CommentController@update');
-    $router->patch('comments/{id}', 'CommentController@updatePartial');
-    $router->delete('comments/{id}', 'CommentController@destroy');
+
+    //Penulis, editor, admin (bisa nulis & update)
+    $router->group(['middleware' => 'role:penulis,editor,admin'], function () use ($router) {
+        $router->post('posts', 'PostController@store');
+        $router->put('posts/{id}', 'PostController@update');
+        $router->patch('posts/{id}', 'PostController@updatePartial');
+
+        $router->post('comments', 'CommentController@store');
+        $router->put('comments/{id}', 'CommentController@update');
+        $router->patch('comments/{id}', 'CommentController@updatePartial');
+    });
+
+    //Editor & admin bisa hapus
+    $router->group(['middleware' => 'role:editor,admin'], function () use ($router) {
+        $router->delete('posts/{id}', 'PostController@destroy');
+        $router->delete('comments/{id}', 'CommentController@destroy');
+    });
 });

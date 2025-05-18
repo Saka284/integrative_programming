@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Post;
+use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
@@ -19,10 +20,20 @@ class PostController extends Controller
                 'title' => 'required|string|max:100',
                 'status' => 'required|in:published,draft',
                 'content' => 'required|string',
-                'user_id' => 'required|exists:users,id'
             ]);
 
-            $post = Post::create($request->all());
+            $user = Auth::user();
+            $data = $request->only(['title', 'status', 'content']);
+
+            // Penulis otomatis pakai id sendiri
+            if ($user->role === 'penulis') {
+                $data['user_id'] = $user->id;
+            } else if ($user->role === 'admin') {
+                $this->validate($request, ['user_id' => 'required|exists:users,id']);
+                $data['user_id'] = $request->user_id;
+            }
+
+            $post = Post::create($data);
 
             return response()->json([
                 'success' => true,
@@ -65,9 +76,9 @@ class PostController extends Controller
                 'title' => 'required|string|max:100',
                 'status' => 'required|in:published,draft',
                 'content' => 'required|string',
-                'user_id' => 'required|exists:users,id'
             ]);
 
+            $user = Auth::user(); 
             $post = Post::find($id);
 
             if (!$post) {
@@ -77,7 +88,24 @@ class PostController extends Controller
                 ], 404);
             }
 
-            $post->update($request->all());
+            // Penulis hanya bisa edit post miliknya sendiri
+            if ($user->role === 'penulis' && $post->user_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk mengedit post ini'
+                ], 403);
+            }
+
+            // Hanya admin boleh mengubah user_id
+            $updateData = $request->only(['title', 'status', 'content']);
+            if ($user->role === 'admin' && $request->has('user_id')) {
+                $this->validate($request, [
+                    'user_id' => 'exists:users,id'
+                ]);
+                $updateData['user_id'] = $request->user_id;
+            }
+
+            $post->update($updateData);
 
             return response()->json([
                 'success' => true,
@@ -109,7 +137,9 @@ class PostController extends Controller
                 'user_id' => 'sometimes|required|exists:users,id'
             ]);
 
+            $user = Auth::user();
             $post = Post::find($id);
+
             if (!$post) {
                 return response()->json([
                     'success' => false,
@@ -117,7 +147,11 @@ class PostController extends Controller
                 ], 404);
             }
 
-            $post->update($request->only(['title', 'status', 'content', 'user_id']));
+            if ($user->role === 'penulis' && $post->user_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Tidak memiliki izin untuk mengedit post ini'], 403);
+            }
+
+            $post->update($request->only(['title', 'status', 'content']));
 
             return response()->json([
                 'success' => true,

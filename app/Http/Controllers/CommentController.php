@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Comment;
+use Illuminate\Support\Facades\Auth;
+
 class CommentController extends Controller
 {
     public function index()
@@ -17,10 +19,19 @@ class CommentController extends Controller
             $this->validate($request, [
                 'comment' => 'required|string|max:250',
                 'post_id' => 'required|exists:posts,id',
-                'user_id' => 'required|exists:users,id'
             ]);
 
-            $comment = Comment::create($request->all());
+            $user = Auth::user();
+            $data = $request->only(['comment', 'post_id']);
+
+            if ($user->role === 'penulis') {
+                $data['user_id'] = $user->id;
+            } else if ($user->role === 'admin') {
+                $this->validate($request, ['user_id' => 'required|exists:users,id']);
+                $data['user_id'] = $request->user_id;
+            }
+
+            $comment = Comment::create($data);
 
             return response()->json([
                 'success' => true,
@@ -62,9 +73,9 @@ class CommentController extends Controller
             $this->validate($request, [
                 'comment' => 'required|string|max:250',
                 'post_id' => 'required|exists:posts,id',
-                'user_id' => 'required|exists:users,id'
             ]);
 
+            $user = Auth::user();
             $comment = Comment::find($id);
 
             if (!$comment) {
@@ -74,7 +85,21 @@ class CommentController extends Controller
                 ], 404);
             }
 
-            $comment->update($request->all());
+            if ($user->role === 'penulis' && $comment->user_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak memiliki izin untuk mengedit komentar ini'
+                ], 403);
+            }
+
+            $updateData = $request->only(['comment', 'post_id']);
+
+            if ($user->role === 'admin' && $request->has('user_id')) {
+                $this->validate($request, ['user_id' => 'exists:users,id']);
+                $updateData['user_id'] = $request->user_id;
+            }
+
+            $comment->update($updateData);
 
             return response()->json([
                 'success' => true,
@@ -96,16 +121,16 @@ class CommentController extends Controller
         }
     }
 
-    // PATCH /comments/{id} → Memperbarui sebagian data komentar
     public function updatePartial(Request $request, $id)
     {
         try {
             $this->validate($request, [
                 'comment' => 'sometimes|required|string|max:250',
                 'post_id' => 'sometimes|required|exists:posts,id',
-                'user_id' => 'sometimes|required|exists:users,id'
+                'user_id' => 'sometimes|required|exists:users,id',
             ]);
 
+            $user = Auth::user();
             $comment = Comment::find($id);
 
             if (!$comment) {
@@ -115,7 +140,20 @@ class CommentController extends Controller
                 ], 404);
             }
 
-            $comment->update($request->only(['comment', 'post_id', 'user_id']));
+            if ($user->role === 'penulis' && $comment->user_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak memiliki izin untuk mengedit komentar ini'
+                ], 403);
+            }
+
+            $updateData = $request->only(['comment', 'post_id']);
+
+            if ($user->role === 'admin' && $request->has('user_id')) {
+                $updateData['user_id'] = $request->user_id;
+            }
+
+            $comment->update($updateData);
 
             return response()->json([
                 'success' => true,
@@ -137,10 +175,10 @@ class CommentController extends Controller
         }
     }
 
-
     public function destroy($id)
     {
         try {
+            $user = Auth::user();
             $comment = Comment::find($id);
 
             if (!$comment) {
@@ -148,6 +186,13 @@ class CommentController extends Controller
                     'success' => false,
                     'message' => 'Komentar tidak ditemukan'
                 ], 404);
+            }
+
+            if ($user->role === 'penulis' && $comment->user_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak memiliki izin untuk menghapus komentar ini'
+                ], 403);
             }
 
             $comment->delete();
