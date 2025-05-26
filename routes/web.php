@@ -27,7 +27,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'auth'], function () use ($ro
     $router->get('me', 'AuthController@me');
     $router->post('logout', 'AuthController@logout');
 
-    //Admin saja (manajemen user)
+    //Hanya Admin
     $router->group(['middleware' => 'role:admin'], function () use ($router) {
         $router->get('users', 'UserController@index');
         $router->post('users', 'UserController@store');
